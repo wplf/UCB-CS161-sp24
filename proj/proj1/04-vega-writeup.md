@@ -83,4 +83,8 @@ note that the SFP is tampered to 0xfffd600, the new RIP will be the SFP + 4 = 0x
 
 ## EGG output
 
-thus the output of arg will be  `52 * "A" + "\x9c\xdf\xff\xff" + 8 * "A" + "\x00"` xor `\x20`
+Thus the output of arg will be  `52 * "A" + "\x9c\xdf\xff\xff" + 8 * "A" + "\x00"` xor `\x20`
+
+`52 for pad` + `4 for the address of shellcode` + `8 for pad` + `\x00 for tamper the SFP`
+
+Don't forget to flip the output with 0x20.
