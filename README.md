@@ -1,5 +1,6 @@
 # cs161-sp24
 
-This is the project implementation of myself for the course CS161 at the University of California, Berkeley.
+Hello there!
+This is the implementation of the course CS161 at the University of California, Berkeley, which is a course on computer security.
 
-Hope to help you.
+In project 1, you will learn how to use the gbd debugger and exploit the vulnerability in the C program. And I am still working on it.
