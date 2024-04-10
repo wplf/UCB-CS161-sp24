@@ -42,7 +42,7 @@ Stack level 0, frame at 0xffffd690:
 
 ## Exploit Structure
 
-We can run this program many times to determine the position of stack canary in 0xffffd67c. 
+We can run this program many times to determine the position of stack canary in 0xffffd67c.
 Here is the stack diagram.
 
 The exploit has two tries:
@@ -58,7 +58,7 @@ The second try:
 1. write 16 dummy characters to buffer
 2. write canary
 3. write 12 pad, and the RIP will sit in the next byte.
-4. overwrite the RIP with magic-code, "\x90\xd6\dff\xff", which is the RIP address('0xffffd68c') + 4 
+4. overwrite the RIP with magic-code, "\x90\xd6\dff\xff", which is the RIP address('0xffffd68c') + 4
 5. write SHELLCODE.
 
 ## Exploit GDB Output
@@ -72,4 +72,3 @@ When we ran GDB after inputting the malicious exploit string, we got the followi
 0xffffd68c:     0xffffd690      0xdb31c031      0xd231c931      0xb05b32eb
 0xffffd69c:     0xcdc93105      0xebc68980      0x3101b006      0x8980cddb
 ```
-
