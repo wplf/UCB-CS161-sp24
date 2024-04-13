@@ -3,8 +3,7 @@
 ## Main Idea
 
 The code is vulnerable because of the printf function. We can define arguments to write what we want to memory.
-Before that, we need to know the steps of printf. In that schema, arg0 is the address of the printf string. Arg1 and arg2 is the arguments of printf.
-We can self-define the arguments that we want. At first, we neet to place the string address above the rip of printf. Then the printf function will use the argument above RIP of printf according to the format of string.
+Before that, we need to know the steps of printf. You can see the detail in [task-description](https://sp24.cs161.org/proj1/q6/)
 
 ```plaintext
 ...
