@@ -1,4 +1,4 @@
-# cs161-sp24
+# UCB-CS161-sp24
 
 Hello there!
 This is the implementation of the course CS161 about computer security, offered by UCB.
